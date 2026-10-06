@@ -20,6 +20,10 @@ export default function Home() {
 
   const [message, setMessage] = useState("");
 
+  // ========================================
+  // LOAD INITIAL DATA
+  // ========================================
+
   useEffect(() => {
     loadProducts();
     loadTransactions();
@@ -27,9 +31,9 @@ export default function Home() {
     loadPredictions();
   }, []);
 
-  // ==============================
+  // ========================================
   // LOAD PRODUCTS
-  // ==============================
+  // ========================================
 
   async function loadProducts() {
     try {
@@ -51,7 +55,10 @@ export default function Home() {
         );
       }
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Gagal mengambil produk:",
+        error
+      );
 
       setMessage(
         "Gagal mengambil data produk"
@@ -61,9 +68,9 @@ export default function Home() {
     }
   }
 
-  // ==============================
+  // ========================================
   // LOAD TRANSACTIONS
-  // ==============================
+  // ========================================
 
   async function loadTransactions() {
     try {
@@ -88,9 +95,9 @@ export default function Home() {
     }
   }
 
-  // ==============================
+  // ========================================
   // LOAD STATISTICS
-  // ==============================
+  // ========================================
 
   async function loadStatistics() {
     try {
@@ -115,9 +122,9 @@ export default function Home() {
     }
   }
 
-  // ==============================
-  // LOAD MACHINE LEARNING
-  // ==============================
+  // ========================================
+  // LOAD MACHINE LEARNING PREDICTION
+  // ========================================
 
   async function loadPredictions() {
     setPredictionLoading(true);
@@ -135,6 +142,11 @@ export default function Home() {
 
       if (result.success) {
         setPredictions(result.data);
+      } else {
+        console.error(
+          "Prediction error:",
+          result.message
+        );
       }
     } catch (error) {
       console.error(
@@ -146,9 +158,9 @@ export default function Home() {
     }
   }
 
-  // ==============================
-  // ADD TO CART
-  // ==============================
+  // ========================================
+  // ADD PRODUCT TO CART
+  // ========================================
 
   function addToCart(product) {
     if (Number(product.stock) <= 0) {
@@ -188,6 +200,8 @@ export default function Home() {
         )
       );
 
+      setMessage("");
+
       return;
     }
 
@@ -202,9 +216,9 @@ export default function Home() {
     setMessage("");
   }
 
-  // ==============================
-  // REMOVE FROM CART
-  // ==============================
+  // ========================================
+  // REMOVE PRODUCT FROM CART
+  // ========================================
 
   function removeFromCart(productId) {
     setCart(
@@ -215,9 +229,9 @@ export default function Home() {
     );
   }
 
-  // ==============================
+  // ========================================
   // DECREASE QUANTITY
-  // ==============================
+  // ========================================
 
   function decreaseQuantity(productId) {
     setCart(
@@ -238,9 +252,9 @@ export default function Home() {
     );
   }
 
-  // ==============================
+  // ========================================
   // INCREASE QUANTITY
-  // ==============================
+  // ========================================
 
   function increaseQuantity(productId) {
     const product =
@@ -285,9 +299,9 @@ export default function Home() {
     setMessage("");
   }
 
-  // ==============================
-  // CALCULATE TOTAL
-  // ==============================
+  // ========================================
+  // CALCULATE CART TOTAL
+  // ========================================
 
   function calculateTotal() {
     return cart.reduce(
@@ -299,9 +313,9 @@ export default function Home() {
     );
   }
 
-  // ==============================
+  // ========================================
   // CHECKOUT
-  // ==============================
+  // ========================================
 
   async function checkout() {
     if (cart.length === 0) {
@@ -371,9 +385,9 @@ export default function Home() {
     }
   }
 
-  // ==============================
+  // ========================================
   // FORMAT RUPIAH
-  // ==============================
+  // ========================================
 
   function formatRupiah(value) {
     return new Intl.NumberFormat(
@@ -383,8 +397,12 @@ export default function Home() {
         currency: "IDR",
         maximumFractionDigits: 0,
       }
-    ).format(value);
+    ).format(Number(value) || 0);
   }
+
+  // ========================================
+  // TOTAL ITEMS IN CART
+  // ========================================
 
   const totalCartItems =
     cart.reduce(
@@ -394,10 +412,16 @@ export default function Home() {
       0
     );
 
+  // ========================================
+  // RENDER
+  // ========================================
+
   return (
     <main className="container">
 
-      {/* HEADER */}
+      {/* ========================================
+          HEADER
+          ======================================== */}
 
       <header className="header">
 
@@ -428,7 +452,9 @@ export default function Home() {
       </header>
 
 
-      {/* STATISTICS */}
+      {/* ========================================
+          DASHBOARD STATISTICS
+          ======================================== */}
 
       <section className="stats">
 
@@ -496,9 +522,12 @@ export default function Home() {
       </section>
 
 
-      {/* BEST PRODUCT */}
+      {/* ========================================
+          BEST PRODUCT
+          ======================================== */}
 
       {statistics?.best_product && (
+
         <section className="best-product">
 
           <div>
@@ -520,24 +549,35 @@ export default function Home() {
           </strong>
 
         </section>
+
       )}
 
 
-      {/* MESSAGE */}
+      {/* ========================================
+          MESSAGE
+          ======================================== */}
 
       {message && (
+
         <div className="message">
+
           {message}
+
         </div>
+
       )}
 
 
-      {/* PRODUCTS + CART */}
+      {/* ========================================
+          PRODUCTS + CART
+          ======================================== */}
 
       <section className="content">
 
 
-        {/* PRODUCTS */}
+        {/* ========================================
+            PRODUCT LIST
+            ======================================== */}
 
         <div className="products-section">
 
@@ -561,7 +601,9 @@ export default function Home() {
           {loading ? (
 
             <div className="loading">
+
               Memuat produk...
+
             </div>
 
           ) : (
@@ -646,7 +688,9 @@ export default function Home() {
         </div>
 
 
-        {/* CART */}
+        {/* ========================================
+            SHOPPING CART
+            ======================================== */}
 
         <aside className="cart-section">
 
@@ -800,7 +844,9 @@ export default function Home() {
       </section>
 
 
-      {/* MACHINE LEARNING */}
+      {/* ========================================
+          MACHINE LEARNING
+          ======================================== */}
 
       <section className="prediction-section">
 
@@ -819,6 +865,7 @@ export default function Home() {
 
           </div>
 
+
           <div className="prediction-badge">
             ML
           </div>
@@ -829,13 +876,17 @@ export default function Home() {
         {predictionLoading ? (
 
           <div className="loading">
+
             Menghitung prediksi...
+
           </div>
 
         ) : predictions.length === 0 ? (
 
           <div className="empty-history">
+
             Data prediksi belum tersedia.
+
           </div>
 
         ) : (
@@ -847,42 +898,115 @@ export default function Home() {
 
                 <div
                   className="prediction-card"
-                  key={prediction.product_id}
+                  key={
+                    prediction.product_id
+                  }
                 >
 
                   <div className="prediction-icon">
                     📈
                   </div>
 
+
                   <h3>
                     {prediction.product_name}
                   </h3>
 
+
                   <div className="prediction-info">
 
+
+                    {/* STOCK */}
+
                     <div>
+
                       <span>
                         Stok Saat Ini
                       </span>
 
                       <strong>
-                        {prediction.current_stock}
+                        {
+                          prediction.current_stock
+                        }
                       </strong>
+
                     </div>
 
 
+                    {/* TRAINING DATA */}
+
                     <div>
+
+                      <span>
+                        Data Training
+                      </span>
+
+                      <strong>
+                        {
+                          prediction.training_data_count
+                        }
+                        {" "}
+                        hari
+                      </strong>
+
+                    </div>
+
+
+                    {/* AVERAGE */}
+
+                    <div>
+
+                      <span>
+                        Rata-rata
+                      </span>
+
+                      <strong>
+                        {
+                          prediction.average_sales
+                        }
+                      </strong>
+
+                    </div>
+
+
+                    {/* TREND */}
+
+                    <div>
+
+                      <span>
+                        Tren
+                      </span>
+
+                      <strong>
+                        {
+                          prediction.trend
+                        }
+                      </strong>
+
+                    </div>
+
+
+                    {/* PREDICTION */}
+
+                    <div>
+
                       <span>
                         Prediksi Terjual
                       </span>
 
                       <strong>
-                        {prediction.predicted_sales}
+                        {
+                          prediction.predicted_sales
+                        }
                       </strong>
+
                     </div>
+
 
                   </div>
 
+
+                  {/* MODEL */}
 
                   <div className="prediction-model">
 
@@ -890,7 +1014,31 @@ export default function Home() {
                     {" "}
                     {prediction.model}
 
+                    {" • "}
+
+                    Prediksi penjualan berikutnya
+
                   </div>
+
+
+                  {/* STOCK WARNING */}
+
+                  {Number(
+                    prediction.current_stock
+                  ) <
+                    Number(
+                      prediction.predicted_sales
+                    ) && (
+
+                    <div className="stock-warning">
+
+                      ⚠ Stok diperkirakan tidak
+                      mencukupi untuk prediksi
+                      penjualan.
+
+                    </div>
+
+                  )}
 
                 </div>
 
@@ -904,7 +1052,9 @@ export default function Home() {
       </section>
 
 
-      {/* TRANSACTION HISTORY */}
+      {/* ========================================
+          TRANSACTION HISTORY
+          ======================================== */}
 
       <section className="history">
 
@@ -928,7 +1078,9 @@ export default function Home() {
         {transactions.length === 0 ? (
 
           <div className="empty-history">
+
             Belum ada transaksi.
+
           </div>
 
         ) : (
@@ -960,6 +1112,7 @@ export default function Home() {
 
                   </div>
 
+
                   <strong>
                     {formatRupiah(
                       transaction.total
@@ -978,10 +1131,14 @@ export default function Home() {
       </section>
 
 
-      {/* FOOTER */}
+      {/* ========================================
+          FOOTER
+          ======================================== */}
 
       <footer>
+
         Cloud POS — UTS Cloud Computing
+
       </footer>
 
     </main>
