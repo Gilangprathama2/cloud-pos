@@ -10,36 +10,64 @@ export default function Home() {
   const [cart, setCart] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] =
+    useState(false);
   const [message, setMessage] = useState("");
+
+  // =====================================
+  // LOAD DATA SAAT HALAMAN DIBUKA
+  // =====================================
 
   useEffect(() => {
     loadProducts();
     loadTransactions();
   }, []);
 
+  // =====================================
+  // LOAD PRODUCTS
+  // =====================================
+
   async function loadProducts() {
     try {
       const response = await fetch(
-        `${API_URL}?action=products`
+        `${API_URL}?action=products`,
+        {
+          cache: "no-store",
+        }
       );
 
       const result = await response.json();
 
       if (result.success) {
         setProducts(result.data);
+      } else {
+        setMessage(
+          result.message ||
+            "Gagal mengambil data produk"
+        );
       }
     } catch (error) {
       console.error(error);
-      setMessage("Gagal mengambil data produk");
+
+      setMessage(
+        "Gagal mengambil data produk"
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  // =====================================
+  // LOAD TRANSACTIONS
+  // =====================================
+
   async function loadTransactions() {
     try {
       const response = await fetch(
-        `${API_URL}?action=transactions`
+        `${API_URL}?action=transactions`,
+        {
+          cache: "no-store",
+        }
       );
 
       const result = await response.json();
@@ -48,36 +76,75 @@ export default function Home() {
         setTransactions(result.data);
       }
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Gagal mengambil transaksi:",
+        error
+      );
     }
   }
 
+  // =====================================
+  // TAMBAH PRODUK KE KERANJANG
+  // =====================================
+
   function addToCart(product) {
+    // Cek stok
+    if (Number(product.stock) <= 0) {
+      setMessage(
+        `Stok ${product.name} habis`
+      );
+
+      return;
+    }
+
     const existing = cart.find(
       (item) => item.id === product.id
     );
 
+    // Jika produk sudah ada di keranjang
     if (existing) {
+      // Cek apakah jumlah sudah sama dengan stok
+      if (
+        existing.quantity >=
+        Number(product.stock)
+      ) {
+        setMessage(
+          `Stok ${product.name} hanya tersedia ${product.stock}`
+        );
+
+        return;
+      }
+
       setCart(
         cart.map((item) =>
           item.id === product.id
             ? {
                 ...item,
-                quantity: item.quantity + 1,
+                quantity:
+                  item.quantity + 1,
               }
             : item
         )
       );
-    } else {
-      setCart([
-        ...cart,
-        {
-          ...product,
-          quantity: 1,
-        },
-      ]);
+
+      return;
     }
+
+    // Produk belum ada di keranjang
+    setCart([
+      ...cart,
+      {
+        ...product,
+        quantity: 1,
+      },
+    ]);
+
+    setMessage("");
   }
+
+  // =====================================
+  // HAPUS PRODUK DARI KERANJANG
+  // =====================================
 
   function removeFromCart(productId) {
     setCart(
@@ -87,6 +154,10 @@ export default function Home() {
     );
   }
 
+  // =====================================
+  // KURANGI QUANTITY
+  // =====================================
+
   function decreaseQuantity(productId) {
     setCart(
       cart
@@ -94,26 +165,64 @@ export default function Home() {
           item.id === productId
             ? {
                 ...item,
-                quantity: item.quantity - 1,
+                quantity:
+                  item.quantity - 1,
               }
             : item
         )
-        .filter((item) => item.quantity > 0)
+        .filter(
+          (item) => item.quantity > 0
+        )
     );
   }
 
+  // =====================================
+  // TAMBAH QUANTITY
+  // =====================================
+
   function increaseQuantity(productId) {
+    const product = products.find(
+      (item) => item.id === productId
+    );
+
+    const cartItem = cart.find(
+      (item) => item.id === productId
+    );
+
+    if (!product || !cartItem) {
+      return;
+    }
+
+    // Cek stok
+    if (
+      cartItem.quantity >=
+      Number(product.stock)
+    ) {
+      setMessage(
+        `Stok ${product.name} hanya tersedia ${product.stock}`
+      );
+
+      return;
+    }
+
     setCart(
       cart.map((item) =>
         item.id === productId
           ? {
               ...item,
-              quantity: item.quantity + 1,
+              quantity:
+                item.quantity + 1,
             }
           : item
       )
     );
+
+    setMessage("");
   }
+
+  // =====================================
+  // HITUNG TOTAL
+  // =====================================
 
   function calculateTotal() {
     return cart.reduce(
@@ -125,49 +234,96 @@ export default function Home() {
     );
   }
 
+  // =====================================
+  // CHECKOUT
+  // =====================================
+
   async function checkout() {
     if (cart.length === 0) {
-      setMessage("Keranjang masih kosong");
+      setMessage(
+        "Keranjang masih kosong"
+      );
+
       return;
     }
+
+    if (checkoutLoading) {
+      return;
+    }
+
+    setCheckoutLoading(true);
+    setMessage("");
 
     try {
       const response = await fetch(
         `${API_URL}?action=transaction`,
         {
           method: "POST",
+
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
+
           body: JSON.stringify({
             items: cart,
           }),
         }
       );
 
-      const result = await response.json();
+      const result =
+        await response.json();
+
+      // =================================
+      // TRANSAKSI BERHASIL
+      // =================================
 
       if (result.success) {
         setMessage(
           `Transaksi berhasil! ID transaksi: ${result.data.transaction_id}`
         );
 
+        // Kosongkan keranjang
         setCart([]);
 
-        loadTransactions();
+        // =================================
+        // REFRESH PRODUK
+        // =================================
+
+        await loadProducts();
+
+        // =================================
+        // REFRESH TRANSAKSI
+        // =================================
+
+        await loadTransactions();
       } else {
+        // =================================
+        // TRANSAKSI GAGAL
+        // =================================
+
         setMessage(
           result.message ||
             "Transaksi gagal"
         );
       }
     } catch (error) {
-      console.error(error);
-      setMessage(
-        "Terjadi kesalahan saat transaksi"
+      console.error(
+        "Error checkout:",
+        error
       );
+
+      setMessage(
+        "Terjadi kesalahan saat melakukan transaksi"
+      );
+    } finally {
+      setCheckoutLoading(false);
     }
   }
+
+  // =====================================
+  // FORMAT RUPIAH
+  // =====================================
 
   function formatRupiah(value) {
     return new Intl.NumberFormat(
@@ -180,123 +336,291 @@ export default function Home() {
     ).format(value);
   }
 
-  const totalSales = transactions.reduce(
-    (total, transaction) =>
-      total + Number(transaction.total),
-    0
-  );
+  // =====================================
+  // TOTAL PENJUALAN
+  // =====================================
+
+  const totalSales =
+    transactions.reduce(
+      (total, transaction) =>
+        total +
+        Number(transaction.total),
+      0
+    );
+
+  // =====================================
+  // TOTAL ITEM DI KERANJANG
+  // =====================================
+
+  const totalCartItems =
+    cart.reduce(
+      (total, item) =>
+        total +
+        Number(item.quantity),
+      0
+    );
+
+  // =====================================
+  // RETURN / UI
+  // =====================================
 
   return (
     <main className="container">
+
+      {/* =================================
+          HEADER
+      ================================= */}
+
       <header className="header">
+
         <div>
+
           <p className="label">
             CLOUD COMPUTING
           </p>
 
-          <h1>Cloud POS</h1>
+          <h1>
+            Cloud POS
+          </h1>
 
           <p className="subtitle">
             Point of Sale berbasis Cloud Bridge
           </p>
+
         </div>
 
         <div className="status">
+
           <span className="status-dot"></span>
+
           Online
+
         </div>
+
       </header>
 
+
+      {/* =================================
+          STATISTIK
+      ================================= */}
+
       <section className="stats">
-        <div className="stat-card">
-          <span>Total Produk</span>
-          <strong>{products.length}</strong>
-        </div>
 
         <div className="stat-card">
-          <span>Total Transaksi</span>
+
+          <span>
+            Total Produk
+          </span>
+
+          <strong>
+            {products.length}
+          </strong>
+
+        </div>
+
+
+        <div className="stat-card">
+
+          <span>
+            Total Transaksi
+          </span>
+
           <strong>
             {transactions.length}
           </strong>
+
         </div>
+
 
         <div className="stat-card">
-          <span>Total Penjualan</span>
+
+          <span>
+            Total Penjualan
+          </span>
+
           <strong>
-            {formatRupiah(totalSales)}
+            {formatRupiah(
+              totalSales
+            )}
           </strong>
+
         </div>
+
       </section>
 
+
+      {/* =================================
+          MESSAGE
+      ================================= */}
+
       {message && (
+
         <div className="message">
+
           {message}
+
         </div>
+
       )}
 
+
+      {/* =================================
+          CONTENT
+      ================================= */}
+
       <section className="content">
+
+
+        {/* =================================
+            PRODUCTS
+        ================================= */}
+
         <div className="products-section">
+
           <div className="section-header">
+
             <div>
-              <h2>Daftar Produk</h2>
+
+              <h2>
+                Daftar Produk
+              </h2>
+
               <p>
                 Produk dari PostgreSQL
               </p>
+
             </div>
+
           </div>
+
+
+          {/* LOADING */}
 
           {loading ? (
+
             <div className="loading">
+
               Memuat produk...
+
             </div>
+
           ) : (
+
             <div className="product-grid">
-              {products.map((product) => (
-                <div
-                  className="product-card"
-                  key={product.id}
-                >
-                  <div className="product-icon">
-                    🛒
+
+              {products.map(
+                (product) => (
+
+                  <div
+                    className="product-card"
+                    key={product.id}
+                  >
+
+                    <div className="product-icon">
+                      🛒
+                    </div>
+
+
+                    <h3>
+                      {product.name}
+                    </h3>
+
+
+                    <p className="price">
+
+                      {formatRupiah(
+                        product.price
+                      )}
+
+                    </p>
+
+
+                    <p
+                      className="stock"
+                      style={{
+                        color:
+                          Number(
+                            product.stock
+                          ) === 0
+                            ? "#dc2626"
+                            : Number(
+                                product.stock
+                              ) <= 10
+                            ? "#d97706"
+                            : undefined,
+                      }}
+                    >
+
+                      Stok:{" "}
+                      {product.stock}
+
+                    </p>
+
+
+                    <button
+                      onClick={() =>
+                        addToCart(
+                          product
+                        )
+                      }
+                      disabled={
+                        Number(
+                          product.stock
+                        ) <= 0
+                      }
+                    >
+
+                      {Number(
+                        product.stock
+                      ) <= 0
+                        ? "Stok Habis"
+                        : "+ Tambah"}
+
+                    </button>
+
                   </div>
 
-                  <h3>{product.name}</h3>
+                )
+              )}
 
-                  <p className="price">
-                    {formatRupiah(
-                      product.price
-                    )}
-                  </p>
-
-                  <p className="stock">
-                    Stok: {product.stock}
-                  </p>
-
-                  <button
-                    onClick={() =>
-                      addToCart(product)
-                    }
-                  >
-                    + Tambah
-                  </button>
-                </div>
-              ))}
             </div>
+
           )}
+
         </div>
 
+
+        {/* =================================
+            CART
+        ================================= */}
+
         <aside className="cart-section">
+
           <div className="cart-header">
+
             <div>
-              <h2>Keranjang</h2>
+
+              <h2>
+                Keranjang
+              </h2>
+
               <p>
-                {cart.length} jenis produk
+
+                {totalCartItems} item
+
               </p>
+
             </div>
+
           </div>
 
+
+          {/* KERANJANG KOSONG */}
+
           {cart.length === 0 ? (
+
             <div className="empty-cart">
+
               <div className="empty-icon">
                 🛒
               </div>
@@ -308,140 +632,242 @@ export default function Home() {
               <span>
                 Tambahkan produk dari daftar
               </span>
+
             </div>
+
           ) : (
+
             <>
+
+              {/* =================================
+                  CART ITEMS
+              ================================= */}
+
               <div className="cart-items">
-                {cart.map((item) => (
-                  <div
-                    className="cart-item"
-                    key={item.id}
-                  >
-                    <div className="cart-info">
-                      <strong>
-                        {item.name}
-                      </strong>
 
-                      <span>
-                        {formatRupiah(
-                          item.price
-                        )}
-                      </span>
-                    </div>
+                {cart.map(
+                  (item) => (
 
-                    <div className="quantity">
-                      <button
-                        onClick={() =>
-                          decreaseQuantity(
-                            item.id
-                          )
-                        }
-                      >
-                        −
-                      </button>
-
-                      <span>
-                        {item.quantity}
-                      </span>
-
-                      <button
-                        onClick={() =>
-                          increaseQuantity(
-                            item.id
-                          )
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    <button
-                      className="remove"
-                      onClick={() =>
-                        removeFromCart(
-                          item.id
-                        )
-                      }
+                    <div
+                      className="cart-item"
+                      key={item.id}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+
+                      <div className="cart-info">
+
+                        <strong>
+                          {item.name}
+                        </strong>
+
+                        <span>
+
+                          {formatRupiah(
+                            item.price
+                          )}
+
+                        </span>
+
+                      </div>
+
+
+                      {/* QUANTITY */}
+
+                      <div className="quantity">
+
+                        <button
+                          onClick={() =>
+                            decreaseQuantity(
+                              item.id
+                            )
+                          }
+                        >
+                          −
+                        </button>
+
+
+                        <span>
+                          {item.quantity}
+                        </span>
+
+
+                        <button
+                          onClick={() =>
+                            increaseQuantity(
+                              item.id
+                            )
+                          }
+                        >
+                          +
+                        </button>
+
+                      </div>
+
+
+                      {/* REMOVE */}
+
+                      <button
+                        className="remove"
+                        onClick={() =>
+                          removeFromCart(
+                            item.id
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+
+                    </div>
+
+                  )
+                )}
+
               </div>
 
+
+              {/* =================================
+                  TOTAL
+              ================================= */}
+
               <div className="cart-total">
-                <span>Total</span>
+
+                <span>
+                  Total
+                </span>
 
                 <strong>
+
                   {formatRupiah(
                     calculateTotal()
                   )}
+
                 </strong>
+
               </div>
+
+
+              {/* =================================
+                  CHECKOUT
+              ================================= */}
 
               <button
                 className="checkout"
                 onClick={checkout}
+                disabled={
+                  checkoutLoading
+                }
               >
-                Bayar Sekarang
+
+                {checkoutLoading
+                  ? "Memproses..."
+                  : "Bayar Sekarang"}
+
               </button>
+
             </>
+
           )}
+
         </aside>
+
       </section>
 
+
+      {/* =================================
+          HISTORY
+      ================================= */}
+
       <section className="history">
+
         <div className="section-header">
+
           <div>
-            <h2>Riwayat Transaksi</h2>
+
+            <h2>
+              Riwayat Transaksi
+            </h2>
+
             <p>
               Data transaksi dari Cloud Database
             </p>
+
           </div>
+
         </div>
 
+
         {transactions.length === 0 ? (
+
           <div className="empty-history">
+
             Belum ada transaksi.
+
           </div>
+
         ) : (
+
           <div className="transaction-list">
+
             {transactions.map(
               (transaction) => (
+
                 <div
                   className="transaction"
                   key={transaction.id}
                 >
+
                   <div>
+
                     <strong>
+
                       Transaksi #
                       {transaction.id}
+
                     </strong>
 
+
                     <span>
+
                       {new Date(
                         transaction.created_at
                       ).toLocaleString(
                         "id-ID"
                       )}
+
                     </span>
+
                   </div>
 
+
                   <strong>
+
                     {formatRupiah(
                       transaction.total
                     )}
+
                   </strong>
+
                 </div>
+
               )
             )}
+
           </div>
+
         )}
+
       </section>
 
+
+      {/* =================================
+          FOOTER
+      ================================= */}
+
       <footer>
+
         Cloud POS — UTS Cloud Computing
+
       </footer>
+
     </main>
   );
 }
