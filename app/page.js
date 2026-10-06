@@ -10,8 +10,11 @@ export default function Home() {
   const [cart, setCart] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [statistics, setStatistics] = useState(null);
+  const [predictions, setPredictions] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [predictionLoading, setPredictionLoading] =
+    useState(true);
   const [checkoutLoading, setCheckoutLoading] =
     useState(false);
 
@@ -21,6 +24,7 @@ export default function Home() {
     loadProducts();
     loadTransactions();
     loadStatistics();
+    loadPredictions();
   }, []);
 
   // ==============================
@@ -108,6 +112,37 @@ export default function Home() {
         "Gagal mengambil statistik:",
         error
       );
+    }
+  }
+
+  // ==============================
+  // LOAD MACHINE LEARNING
+  // ==============================
+
+  async function loadPredictions() {
+    setPredictionLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}?action=prediction`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (result.success) {
+        setPredictions(result.data);
+      }
+    } catch (error) {
+      console.error(
+        "Gagal mengambil prediksi:",
+        error
+      );
+    } finally {
+      setPredictionLoading(false);
     }
   }
 
@@ -251,7 +286,7 @@ export default function Home() {
   }
 
   // ==============================
-  // CALCULATE CART TOTAL
+  // CALCULATE TOTAL
   // ==============================
 
   function calculateTotal() {
@@ -311,10 +346,11 @@ export default function Home() {
 
         setCart([]);
 
-        // Refresh data
+        // Refresh semua data
         await loadProducts();
         await loadTransactions();
         await loadStatistics();
+        await loadPredictions();
       } else {
         setMessage(
           result.message ||
@@ -496,7 +532,7 @@ export default function Home() {
       )}
 
 
-      {/* MAIN CONTENT */}
+      {/* PRODUCTS + CART */}
 
       <section className="content">
 
@@ -760,6 +796,110 @@ export default function Home() {
           )}
 
         </aside>
+
+      </section>
+
+
+      {/* MACHINE LEARNING */}
+
+      <section className="prediction-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Prediksi Penjualan
+            </h2>
+
+            <p>
+              Prediksi menggunakan Machine Learning
+              dengan metode Linear Regression
+            </p>
+
+          </div>
+
+          <div className="prediction-badge">
+            ML
+          </div>
+
+        </div>
+
+
+        {predictionLoading ? (
+
+          <div className="loading">
+            Menghitung prediksi...
+          </div>
+
+        ) : predictions.length === 0 ? (
+
+          <div className="empty-history">
+            Data prediksi belum tersedia.
+          </div>
+
+        ) : (
+
+          <div className="prediction-grid">
+
+            {predictions.map(
+              (prediction) => (
+
+                <div
+                  className="prediction-card"
+                  key={prediction.product_id}
+                >
+
+                  <div className="prediction-icon">
+                    📈
+                  </div>
+
+                  <h3>
+                    {prediction.product_name}
+                  </h3>
+
+                  <div className="prediction-info">
+
+                    <div>
+                      <span>
+                        Stok Saat Ini
+                      </span>
+
+                      <strong>
+                        {prediction.current_stock}
+                      </strong>
+                    </div>
+
+
+                    <div>
+                      <span>
+                        Prediksi Terjual
+                      </span>
+
+                      <strong>
+                        {prediction.predicted_sales}
+                      </strong>
+                    </div>
+
+                  </div>
+
+
+                  <div className="prediction-model">
+
+                    Model:
+                    {" "}
+                    {prediction.model}
+
+                  </div>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+        )}
 
       </section>
 
