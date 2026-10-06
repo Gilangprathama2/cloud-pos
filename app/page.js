@@ -9,23 +9,23 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [statistics, setStatistics] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] =
     useState(false);
-  const [message, setMessage] = useState("");
 
-  // =====================================
-  // LOAD DATA SAAT HALAMAN DIBUKA
-  // =====================================
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     loadProducts();
     loadTransactions();
+    loadStatistics();
   }, []);
 
-  // =====================================
+  // ==============================
   // LOAD PRODUCTS
-  // =====================================
+  // ==============================
 
   async function loadProducts() {
     try {
@@ -57,9 +57,9 @@ export default function Home() {
     }
   }
 
-  // =====================================
+  // ==============================
   // LOAD TRANSACTIONS
-  // =====================================
+  // ==============================
 
   async function loadTransactions() {
     try {
@@ -70,7 +70,8 @@ export default function Home() {
         }
       );
 
-      const result = await response.json();
+      const result =
+        await response.json();
 
       if (result.success) {
         setTransactions(result.data);
@@ -83,12 +84,38 @@ export default function Home() {
     }
   }
 
-  // =====================================
-  // TAMBAH PRODUK KE KERANJANG
-  // =====================================
+  // ==============================
+  // LOAD STATISTICS
+  // ==============================
+
+  async function loadStatistics() {
+    try {
+      const response = await fetch(
+        `${API_URL}?action=statistics`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (result.success) {
+        setStatistics(result.data);
+      }
+    } catch (error) {
+      console.error(
+        "Gagal mengambil statistik:",
+        error
+      );
+    }
+  }
+
+  // ==============================
+  // ADD TO CART
+  // ==============================
 
   function addToCart(product) {
-    // Cek stok
     if (Number(product.stock) <= 0) {
       setMessage(
         `Stok ${product.name} habis`
@@ -98,12 +125,11 @@ export default function Home() {
     }
 
     const existing = cart.find(
-      (item) => item.id === product.id
+      (item) =>
+        item.id === product.id
     );
 
-    // Jika produk sudah ada di keranjang
     if (existing) {
-      // Cek apakah jumlah sudah sama dengan stok
       if (
         existing.quantity >=
         Number(product.stock)
@@ -130,7 +156,6 @@ export default function Home() {
       return;
     }
 
-    // Produk belum ada di keranjang
     setCart([
       ...cart,
       {
@@ -142,21 +167,22 @@ export default function Home() {
     setMessage("");
   }
 
-  // =====================================
-  // HAPUS PRODUK DARI KERANJANG
-  // =====================================
+  // ==============================
+  // REMOVE FROM CART
+  // ==============================
 
   function removeFromCart(productId) {
     setCart(
       cart.filter(
-        (item) => item.id !== productId
+        (item) =>
+          item.id !== productId
       )
     );
   }
 
-  // =====================================
-  // KURANGI QUANTITY
-  // =====================================
+  // ==============================
+  // DECREASE QUANTITY
+  // ==============================
 
   function decreaseQuantity(productId) {
     setCart(
@@ -171,29 +197,33 @@ export default function Home() {
             : item
         )
         .filter(
-          (item) => item.quantity > 0
+          (item) =>
+            item.quantity > 0
         )
     );
   }
 
-  // =====================================
-  // TAMBAH QUANTITY
-  // =====================================
+  // ==============================
+  // INCREASE QUANTITY
+  // ==============================
 
   function increaseQuantity(productId) {
-    const product = products.find(
-      (item) => item.id === productId
-    );
+    const product =
+      products.find(
+        (item) =>
+          item.id === productId
+      );
 
-    const cartItem = cart.find(
-      (item) => item.id === productId
-    );
+    const cartItem =
+      cart.find(
+        (item) =>
+          item.id === productId
+      );
 
     if (!product || !cartItem) {
       return;
     }
 
-    // Cek stok
     if (
       cartItem.quantity >=
       Number(product.stock)
@@ -220,9 +250,9 @@ export default function Home() {
     setMessage("");
   }
 
-  // =====================================
-  // HITUNG TOTAL
-  // =====================================
+  // ==============================
+  // CALCULATE CART TOTAL
+  // ==============================
 
   function calculateTotal() {
     return cart.reduce(
@@ -234,9 +264,9 @@ export default function Home() {
     );
   }
 
-  // =====================================
+  // ==============================
   // CHECKOUT
-  // =====================================
+  // ==============================
 
   async function checkout() {
     if (cart.length === 0) {
@@ -274,34 +304,18 @@ export default function Home() {
       const result =
         await response.json();
 
-      // =================================
-      // TRANSAKSI BERHASIL
-      // =================================
-
       if (result.success) {
         setMessage(
           `Transaksi berhasil! ID transaksi: ${result.data.transaction_id}`
         );
 
-        // Kosongkan keranjang
         setCart([]);
 
-        // =================================
-        // REFRESH PRODUK
-        // =================================
-
+        // Refresh data
         await loadProducts();
-
-        // =================================
-        // REFRESH TRANSAKSI
-        // =================================
-
         await loadTransactions();
+        await loadStatistics();
       } else {
-        // =================================
-        // TRANSAKSI GAGAL
-        // =================================
-
         setMessage(
           result.message ||
             "Transaksi gagal"
@@ -321,9 +335,9 @@ export default function Home() {
     }
   }
 
-  // =====================================
+  // ==============================
   // FORMAT RUPIAH
-  // =====================================
+  // ==============================
 
   function formatRupiah(value) {
     return new Intl.NumberFormat(
@@ -336,22 +350,6 @@ export default function Home() {
     ).format(value);
   }
 
-  // =====================================
-  // TOTAL PENJUALAN
-  // =====================================
-
-  const totalSales =
-    transactions.reduce(
-      (total, transaction) =>
-        total +
-        Number(transaction.total),
-      0
-    );
-
-  // =====================================
-  // TOTAL ITEM DI KERANJANG
-  // =====================================
-
   const totalCartItems =
     cart.reduce(
       (total, item) =>
@@ -360,16 +358,10 @@ export default function Home() {
       0
     );
 
-  // =====================================
-  // RETURN / UI
-  // =====================================
-
   return (
     <main className="container">
 
-      {/* =================================
-          HEADER
-      ================================= */}
+      {/* HEADER */}
 
       <header className="header">
 
@@ -400,9 +392,7 @@ export default function Home() {
       </header>
 
 
-      {/* =================================
-          STATISTIK
-      ================================= */}
+      {/* STATISTICS */}
 
       <section className="stats">
 
@@ -413,7 +403,9 @@ export default function Home() {
           </span>
 
           <strong>
-            {products.length}
+            {statistics
+              ? statistics.total_products
+              : "..."}
           </strong>
 
         </div>
@@ -426,7 +418,9 @@ export default function Home() {
           </span>
 
           <strong>
-            {transactions.length}
+            {statistics
+              ? statistics.total_transactions
+              : "..."}
           </strong>
 
         </div>
@@ -439,9 +433,26 @@ export default function Home() {
           </span>
 
           <strong>
-            {formatRupiah(
-              totalSales
-            )}
+            {statistics
+              ? formatRupiah(
+                  statistics.total_sales
+                )
+              : "..."}
+          </strong>
+
+        </div>
+
+
+        <div className="stat-card">
+
+          <span>
+            Total Stok
+          </span>
+
+          <strong>
+            {statistics
+              ? statistics.total_stock
+              : "..."}
           </strong>
 
         </div>
@@ -449,31 +460,48 @@ export default function Home() {
       </section>
 
 
-      {/* =================================
-          MESSAGE
-      ================================= */}
+      {/* BEST PRODUCT */}
 
-      {message && (
+      {statistics?.best_product && (
+        <section className="best-product">
 
-        <div className="message">
+          <div>
 
-          {message}
+            <span>
+              Produk Terlaris
+            </span>
 
-        </div>
+            <h2>
+              {statistics.best_product.name}
+            </h2>
 
+          </div>
+
+          <strong>
+            {statistics.best_product.quantity}
+            {" "}
+            terjual
+          </strong>
+
+        </section>
       )}
 
 
-      {/* =================================
-          CONTENT
-      ================================= */}
+      {/* MESSAGE */}
+
+      {message && (
+        <div className="message">
+          {message}
+        </div>
+      )}
+
+
+      {/* MAIN CONTENT */}
 
       <section className="content">
 
 
-        {/* =================================
-            PRODUCTS
-        ================================= */}
+        {/* PRODUCTS */}
 
         <div className="products-section">
 
@@ -494,14 +522,10 @@ export default function Home() {
           </div>
 
 
-          {/* LOADING */}
-
           {loading ? (
 
             <div className="loading">
-
               Memuat produk...
-
             </div>
 
           ) : (
@@ -520,20 +544,15 @@ export default function Home() {
                       🛒
                     </div>
 
-
                     <h3>
                       {product.name}
                     </h3>
 
-
                     <p className="price">
-
                       {formatRupiah(
                         product.price
                       )}
-
                     </p>
-
 
                     <p
                       className="stock"
@@ -563,6 +582,7 @@ export default function Home() {
                           product
                         )
                       }
+
                       disabled={
                         Number(
                           product.stock
@@ -590,9 +610,7 @@ export default function Home() {
         </div>
 
 
-        {/* =================================
-            CART
-        ================================= */}
+        {/* CART */}
 
         <aside className="cart-section">
 
@@ -605,17 +623,13 @@ export default function Home() {
               </h2>
 
               <p>
-
                 {totalCartItems} item
-
               </p>
 
             </div>
 
           </div>
 
-
-          {/* KERANJANG KOSONG */}
 
           {cart.length === 0 ? (
 
@@ -639,10 +653,6 @@ export default function Home() {
 
             <>
 
-              {/* =================================
-                  CART ITEMS
-              ================================= */}
-
               <div className="cart-items">
 
                 {cart.map(
@@ -660,17 +670,13 @@ export default function Home() {
                         </strong>
 
                         <span>
-
                           {formatRupiah(
                             item.price
                           )}
-
                         </span>
 
                       </div>
 
-
-                      {/* QUANTITY */}
 
                       <div className="quantity">
 
@@ -684,11 +690,9 @@ export default function Home() {
                           −
                         </button>
 
-
                         <span>
                           {item.quantity}
                         </span>
-
 
                         <button
                           onClick={() =>
@@ -702,8 +706,6 @@ export default function Home() {
 
                       </div>
 
-
-                      {/* REMOVE */}
 
                       <button
                         className="remove"
@@ -724,10 +726,6 @@ export default function Home() {
               </div>
 
 
-              {/* =================================
-                  TOTAL
-              ================================= */}
-
               <div className="cart-total">
 
                 <span>
@@ -735,19 +733,13 @@ export default function Home() {
                 </span>
 
                 <strong>
-
                   {formatRupiah(
                     calculateTotal()
                   )}
-
                 </strong>
 
               </div>
 
-
-              {/* =================================
-                  CHECKOUT
-              ================================= */}
 
               <button
                 className="checkout"
@@ -772,9 +764,7 @@ export default function Home() {
       </section>
 
 
-      {/* =================================
-          HISTORY
-      ================================= */}
+      {/* TRANSACTION HISTORY */}
 
       <section className="history">
 
@@ -798,9 +788,7 @@ export default function Home() {
         {transactions.length === 0 ? (
 
           <div className="empty-history">
-
             Belum ada transaksi.
-
           </div>
 
         ) : (
@@ -818,32 +806,24 @@ export default function Home() {
                   <div>
 
                     <strong>
-
                       Transaksi #
                       {transaction.id}
-
                     </strong>
 
-
                     <span>
-
                       {new Date(
                         transaction.created_at
                       ).toLocaleString(
                         "id-ID"
                       )}
-
                     </span>
 
                   </div>
 
-
                   <strong>
-
                     {formatRupiah(
                       transaction.total
                     )}
-
                   </strong>
 
                 </div>
@@ -858,14 +838,10 @@ export default function Home() {
       </section>
 
 
-      {/* =================================
-          FOOTER
-      ================================= */}
+      {/* FOOTER */}
 
       <footer>
-
         Cloud POS — UTS Cloud Computing
-
       </footer>
 
     </main>
