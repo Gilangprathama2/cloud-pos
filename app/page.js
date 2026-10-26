@@ -1930,7 +1930,7 @@ function DashboardPage({
           </span>
 
           <h2>
-            Selamat datang di dashboard 👋
+            Selamat datang di dashboard 
           </h2>
 
           <p>
